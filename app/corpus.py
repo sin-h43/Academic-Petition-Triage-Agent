@@ -1,11 +1,19 @@
 import os
+import sys
 import re
 import json
 import hashlib
+from pathlib import Path
 from typing import List, Dict, Optional, Any
+
+# Ensure project root is in sys.path regardless of execution directory
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    load_dotenv(PROJECT_ROOT / ".env")
 except ImportError:
     pass
 
@@ -13,6 +21,7 @@ try:
     import pymupdf as fitz
 except ImportError:
     import fitz
+
 import numpy as np
 import faiss
 from sentence_transformers import SentenceTransformer
@@ -46,6 +55,14 @@ PENALTY_THRESHOLDS = {
 
 class NITRCorpusTools:
     def __init__(self, pdf_path: str = "backUp.pdf", index_dir: str = "index_store"):
+        # Resolve paths relative to project root if needed
+        if not os.path.isabs(pdf_path) and not os.path.exists(pdf_path):
+            alt_path = PROJECT_ROOT / pdf_path
+            if alt_path.exists():
+                pdf_path = str(alt_path)
+        if not os.path.isabs(index_dir):
+            index_dir = str(PROJECT_ROOT / index_dir)
+
         self.pdf_path = pdf_path
         self.index_dir = index_dir
         self.model_name = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
@@ -93,7 +110,7 @@ class NITRCorpusTools:
                         if curr: chunks.append(curr)
                         cid = m_c.group(1)
                         curr = {"clause_id": cid, "parent_section": ".".join(cid.split(".")[:-1]),
-                                "section_title": SECTION_MAP.get(cid.split(".")[0], "General"),
+                                 "section_title": SECTION_MAP.get(cid.split(".")[0], "General"),
                                 "page_number": p_num, "content": line}
                     elif curr:
                         curr["content"] += " " + line
@@ -146,11 +163,11 @@ class NITRCorpusTools:
 
     def get_petition_fields(self, petition_dict: Dict) -> Dict:
         return {
-            "ltp": petition_dict["ltp"],
-            "semester_type": petition_dict["semester_type"],
-            "raw_absences": petition_dict["raw_absences"],
-            "medical_leave_days": petition_dict["medical_leave_days"],
-            "medical_sanctioned": petition_dict["medical_sanctioned"]
+            "ltp": petition_dict.get("ltp", "3-0-0"),
+            "semester_type": petition_dict.get("semester_type", "regular"),
+            "raw_absences": petition_dict.get("raw_absences", 0),
+            "medical_leave_days": petition_dict.get("medical_leave_days", 0),
+            "medical_sanctioned": petition_dict.get("medical_sanctioned", False)
         }
 
     def lookup_penalty_table(self, ltp: str, raw_absences: int, medical_leave_days: int,
@@ -175,17 +192,6 @@ class NITRCorpusTools:
                     "clauses": ["6.2.1", "6.2.3", "6.2.5"]}
         return {"outcome": "ROUTINE_CONDONATION_BAND", "A": A, "TA": TA, "route_hint": "grant-under-provision",
                 "clauses": ["6.2.2", "6.2.5"]}
-
-
-if __name__ == "__main__":
-    print("[Corpus] Initializing NITRCorpusTools...")
-    tools = NITRCorpusTools()
-    print(f"[Corpus] Index ready with {len(tools.chunks)} regulation chunks.")
-    print("\n[Corpus] Sample query: 'attendance condonation medical leave'")
-    hits = tools.search_corpus("attendance condonation medical leave", top_k=3)
-    for h in hits:
-        print(f"  - Clause {h['clause_id']} (Page {h['page_number']}, score={h['score']}): {h['content'][:100]}...")
-
 
 
 if __name__ == "__main__":

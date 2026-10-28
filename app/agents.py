@@ -1,3 +1,19 @@
+import sys
+from pathlib import Path
+
+# Ensure project root is in sys.path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+import sys
+from pathlib import Path
+
+# Ensure project root is in sys.path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 import time
 from typing import TypedDict, List, Dict, Any, Optional
 from langgraph.graph import StateGraph, END
@@ -218,3 +234,41 @@ class PetitionTriageGraph:
             "start_time": time.time()
         }
         return self.graph.invoke(initial_state)
+
+
+if __name__ == "__main__":
+    tools = NITRCorpusTools()
+    graph = PetitionTriageGraph(tools=tools)
+    sample = {
+        "student_id": "SYNTH-01",
+        "course_code": "CS3001",
+        "ltp": "3-0-0",
+        "semester_type": "regular",
+        "raw_absences": 15,
+        "medical_leave_days": 5,
+        "medical_sanctioned": True,
+        "petition_text": "I missed 15 classes in my 3-0-0 course. 5 days were sanctioned medical rest."
+    }
+    print("[Agent] Running sample petition triage...")
+    res = graph.run_petition(sample)
+    print(f"[Agent] Route: {res['route'].upper()} | Refer: {res['referred_to']}")
+    print(f"[Agent] Rationale: {res['rationale']}")
+
+
+if __name__ == "__main__":
+    tools = NITRCorpusTools()
+    graph = PetitionTriageGraph(tools=tools)
+    sample = {
+        "student_id": "SYNTH-01",
+        "course_code": "CS3001",
+        "ltp": "3-0-0",
+        "semester_type": "regular",
+        "raw_absences": 15,
+        "medical_leave_days": 5,
+        "medical_sanctioned": True,
+        "petition_text": "I missed 15 classes in my 3-0-0 course. 5 days were sanctioned medical rest."
+    }
+    print("[Agent] Running sample petition triage...")
+    res = graph.run_petition(sample)
+    print(f"[Agent] Route: {res['route'].upper()} | Refer: {res['referred_to']}")
+    print(f"[Agent] Rationale: {res['rationale']}")

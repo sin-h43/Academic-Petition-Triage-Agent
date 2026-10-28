@@ -7,6 +7,11 @@ Usage:
   python run.py worker  # Starts the background queue worker
 """
 import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 def main():
     mode = sys.argv[1].lower() if len(sys.argv) > 1 else "demo"
@@ -25,8 +30,9 @@ def main():
             print(f"  - [{hit['clause_id']}] (p.{hit['page_number']}, score={hit['score']}): {hit['content'][:120]}...")
     elif mode == "api":
         import uvicorn
-        print("[Launcher] Starting FastAPI server on http://127.0.0.1:8000...")
-        uvicorn.run("app.api:app", host="0.0.0.0", port=8000, reload=False)
+        print("\n[Launcher] Starting FastAPI server on http://127.0.0.1:8000...")
+        print("[Launcher] Open http://127.0.0.1:8000 in your browser to use the interactive dashboard.\n")
+        uvicorn.run("app.api:app", host="127.0.0.1", port=8000, reload=False)
     elif mode == "worker":
         from app.worker import start_worker
         start_worker()
@@ -35,4 +41,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

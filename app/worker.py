@@ -1,28 +1,44 @@
 import os
+import sys
 import time
 import json
-from app.corpus import NITRCorpusTools
-from app.agents import PetitionTriageGraph
-from app.schemas import TriageRunStatus
-from app.storage import get_redis_client
+from pathlib import Path
+
+# Ensure project root is in sys.path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    load_dotenv(PROJECT_ROOT / ".env")
 except ImportError:
     pass
+
+from app.corpus import NITRCorpusTools
+from app.agents import PetitionTriageGraph
+from app.schemas import TriageRunStatus
+from app.storage import get_redis_client, FallbackRedis
 
 QUEUE_KEY = "triage:job_queue"
 RUN_PREFIX = "triage:run:"
 
 def start_worker():
     r = get_redis_client()
+    if isinstance(r, FallbackRedis):
+        print("[Worker] Notice: External Redis server not detected. Using in-memory store.")
+        print("[Worker] Note: In standalone mode without Redis, 'python run.py api' processes jobs automatically in-process.")
+
     tools = NITRCorpusTools(pdf_path=os.getenv("PDF_PATH", "backUp.pdf"))
     agent_graph = PetitionTriageGraph(tools=tools)
     print("[Worker] Initialized FAISS index and LangGraph workflow. Listening for jobs...")
 
     while True:
-        item = r.brpop(QUEUE_KEY, timeout=5)
+        try:
+            item = r.brpop(QUEUE_KEY, timeout=5)
+        except KeyboardInterrupt:
+            print("\n[Worker] Stopping worker.")
+            break
         if not item:
             continue
         _, raw_job = item
