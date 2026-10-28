@@ -1,0 +1,11 @@
+# Environment & Secrets (NEVER COMMIT)
+.env
+.env.local
+
+# Vector store cache & generated artifacts
+index_store/
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
