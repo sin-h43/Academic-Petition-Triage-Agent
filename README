@@ -1,0 +1,39 @@
+# Academic Petition Triage Agent · Mini Project 15
+
+A multi-agent regulation analysis and routing service designed to ingest student academic petitions, identify binding regulation clauses from the NIT Rourkela B.Tech regulations, and route them with verified citations. **An examination officer always makes the final determination.**
+
+---
+
+## Project Overview & Scope
+
+* **Course Code:** UE24AM342AA5 (MP15 · ML System Design & AgentOps)
+* **Corpus:** NIT Rourkela Regulations for B.Tech, Dual Degree, B.Arch, and Integrated M.Sc. Programmes (Summarised version approved November 15, 2019, Senate-87[2019]-02, 31 pages)[cite: 1, 4].
+* **Available Routes:** `grant-under-provision`, `refer`, or `reject` (with cited clauses)[cite: 1].
+* **Escalation Triggers:** When regulation clauses conflict, when discretion is strictly reserved for higher authorities (Dean, Director, Senate), or when petitions fall outside corpus scope.
+* **Strict Boundaries:** Operates on synthetic petition data only (no real student data), requires no model training or cloud deployment, and guarantees that the system never issues a binding determination[cite: 1].
+
+---
+
+## The Core Problem & The 4.1 Benchmark Case
+
+Standard vector search on "attendance" typically returns Clause 6.2.1 / 6.2.5 (debarment and X grades), missing relaxation and medical leave provisions located 11 pages away.
+
+* **The Reference Case (Section 4.1):** A 3-0-0 course student with 15 raw absences, 5 of which are sanctioned medical leave.
+  * **Raw Debarment Check:** 15 exceeds the 12-absence threshold for a 3-0-0 course, which would normally trigger an X grade under Clauses 6.2.1 and 6.2.5[cite: 1, 15, 16].
+  * **Medical Deduction:** Appendix II (p. 23) removes 5 sanctioned days, leaving 10 unauthorized absences[cite: 1, 2, 25].
+  * **Condonation Band:** 10 unauthorized absences fall into the 7–12 condonation band (Clause 6.2.3), permitting a one-step grade cut[cite: 1, 15, 16]. Total absences (15) remain under the absolute ceiling of 18[cite: 1, 16].
+  * **Result:** **Refer** to Dean (Academic Affairs) and Dean (Student Welfare), citing clauses 6.2.1, 6.2.3, 6.2.5, and Appendix II[cite: 1, 2].
+
+---
+
+## System Architecture
+
+```text
+┌────────────────┐      ┌─────────────────────────┐      ┌─────────────────────────┐
+│ FastAPI Client │ ───> │ Redis Queue (Async Job) │ ───> │ LangGraph Worker Nodes  │
+└────────────────┘      └─────────────────────────/      └────────────┬────────────┘
+                                                                      │
+                                                ┌─────────────────────┴─────────────────────┐
+                                                ▼                           ▼               ▼
+                                         Triage Agent             Regulation Analyst   Verifier
+                                       (Extract Entities)         (Multi-Hop Search)  (Check Citations)
