@@ -1,17 +1,22 @@
 import os
 import time
 import json
-import redis
 from app.corpus import NITRCorpusTools
 from app.agents import PetitionTriageGraph
 from app.schemas import TriageRunStatus
+from app.storage import get_redis_client
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 QUEUE_KEY = "triage:job_queue"
 RUN_PREFIX = "triage:run:"
 
 def start_worker():
-    r = redis.from_url(REDIS_URL, decode_responses=True)
+    r = get_redis_client()
     tools = NITRCorpusTools(pdf_path=os.getenv("PDF_PATH", "backUp.pdf"))
     agent_graph = PetitionTriageGraph(tools=tools)
     print("[Worker] Initialized FAISS index and LangGraph workflow. Listening for jobs...")

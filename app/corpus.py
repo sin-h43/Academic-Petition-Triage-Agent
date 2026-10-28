@@ -3,7 +3,16 @@ import re
 import json
 import hashlib
 from typing import List, Dict, Optional, Any
-import fitz
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+try:
+    import pymupdf as fitz
+except ImportError:
+    import fitz
 import numpy as np
 import faiss
 from sentence_transformers import SentenceTransformer
@@ -40,7 +49,10 @@ class NITRCorpusTools:
         self.pdf_path = pdf_path
         self.index_dir = index_dir
         self.model_name = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
-        self.embedder = SentenceTransformer(self.model_name)
+        try:
+            self.embedder = SentenceTransformer(self.model_name, local_files_only=True)
+        except Exception:
+            self.embedder = SentenceTransformer(self.model_name)
         self.chunks: List[Dict] = []
         self.clause_lookup: Dict[str, Dict] = {}
         self.index: Optional[faiss.IndexFlatIP] = None
@@ -163,3 +175,24 @@ class NITRCorpusTools:
                     "clauses": ["6.2.1", "6.2.3", "6.2.5"]}
         return {"outcome": "ROUTINE_CONDONATION_BAND", "A": A, "TA": TA, "route_hint": "grant-under-provision",
                 "clauses": ["6.2.2", "6.2.5"]}
+
+
+if __name__ == "__main__":
+    print("[Corpus] Initializing NITRCorpusTools...")
+    tools = NITRCorpusTools()
+    print(f"[Corpus] Index ready with {len(tools.chunks)} regulation chunks.")
+    print("\n[Corpus] Sample query: 'attendance condonation medical leave'")
+    hits = tools.search_corpus("attendance condonation medical leave", top_k=3)
+    for h in hits:
+        print(f"  - Clause {h['clause_id']} (Page {h['page_number']}, score={h['score']}): {h['content'][:100]}...")
+
+
+
+if __name__ == "__main__":
+    print("[Corpus] Initializing NITRCorpusTools...")
+    tools = NITRCorpusTools()
+    print(f"[Corpus] Index ready with {len(tools.chunks)} regulation chunks.")
+    print("\n[Corpus] Sample query: 'attendance condonation medical leave'")
+    hits = tools.search_corpus("attendance condonation medical leave", top_k=3)
+    for h in hits:
+        print(f"  - Clause {h['clause_id']} (Page {h['page_number']}, score={h['score']}): {h['content'][:100]}...")
